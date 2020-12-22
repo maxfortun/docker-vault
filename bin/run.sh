@@ -26,8 +26,12 @@ done < <(docker image inspect -f '{{json .Config.ExposedPorts}}' $imageId|jq -r 
 HOST_MNT=${HOST_MNT:-$BWD/mnt}
 GUEST_MNT=${GUEST_MNT:-$BWD/mnt}
 
-DOCKER_RUN_ARGS+=( -v $GUEST_MNT/etc/letsencrypt:/etc/letsencrypt:ro )
-DOCKER_RUN_ARGS+=( -v $GUEST_MNT/etc/envoy/envoy.yaml:/etc/envoy/envoy.yaml )
+# Needs to be absent or container will try to connect to the wrong port
+unset VAULT_ADDR
+
+DOCKER_RUN_ARGS+=( --cap-add=IPC_LOCK )
+DOCKER_RUN_ARGS+=( -v $GUEST_MNT/var/lib/vault:/var/lib/vault )
+DOCKER_RUN_ARGS+=( -e 'VAULT_LOCAL_CONFIG={"backend": {"file": {"path": "/var/lib/vault"}}, "default_lease_ttl": "168h", "max_lease_ttl": "720h"}' )
 
 docker update --restart=no $NAME || true
 docker stop $NAME || true
